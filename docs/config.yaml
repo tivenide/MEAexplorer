@@ -1,0 +1,12 @@
+InputFolder: "data/input"
+OutputFolder: "data/output"
+ExecutionMode: "serial"
+Filter:
+  Type: "bandpass"
+  LowCut: 200
+  HighCut: 3000
+SpikeDetection:
+  Method: "threshold"
+  FactorPos: 6
+  FactorNeg: 6
+  RefractoryPeriod: 0.001
