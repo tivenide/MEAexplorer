@@ -1,6 +1,8 @@
 InputFolder: "data/input"
 OutputFolder: "data/output"
-ExecutionMode: "serial"
+ExecutionMode: "serialWindow"
+SerialWindow:
+  WindowTimeInSec: 2
 Filter:
   Type: "bandpass"
   LowCut: 200

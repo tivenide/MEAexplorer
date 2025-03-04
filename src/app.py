@@ -203,6 +203,50 @@ class BRWFileProcessor:
 
         return spikes_per_channel, sampling_rate
 
+    def process_serial_window(self, file_path, meta_data):
+        """Process .brw files serial with windows."""
+        sampling_rate = meta_data['sampling_rate']
+        window_time_in_sec = self.config.get("SerialWindow", {}).get("WindowTimeInSec", 2)
+        with h5py.File(file_path, 'r') as h5file:
+            start_index = 0
+            end_index = meta_data['n_rec_frames']
+            step_size = int(sampling_rate * window_time_in_sec)
+            n_channels = meta_data['n_cols'] * meta_data['n_rows']
+            spikes_per_channel = {}
+            
+            # window level
+            for window_start_index in range(start_index, end_index, step_size):
+                
+                window_end_index = min(window_start_index + step_size, end_index)
+                
+                data_slice = np.array(h5file['3BData/Raw'][window_start_index*n_channels:window_end_index*n_channels]).reshape(-1,n_channels)
+                
+                # discard windows, which are too long or too short
+                if len(data_slice) == step_size:
+                    logger.info(f"w: {window_start_index}")
+
+                    # channel level within window
+                    for channel_idx in range(n_channels):
+                        
+                        channel_data = data_slice[:, channel_idx]
+                        
+                        channel_data_analog = self.convert_digital_to_analog_in_micro_volt(
+                            meta_data['bit_depth'],
+                            meta_data['max_volt'],
+                            meta_data['min_volt'],
+                            meta_data['signal_inversion'],
+                            digital_value=channel_data
+                        )
+                       
+                        channel_window_spike_indices = self.spike_detector.pipeline(channel_data_analog, sampling_rate)
+                        
+                        if channel_idx not in spikes_per_channel:
+                            spikes_per_channel[channel_idx]=[]
+                        channel_spike_indices = channel_window_spike_indices + window_start_index
+
+                        spikes_per_channel[channel_idx].extend(channel_spike_indices.tolist())
+        return spikes_per_channel, sampling_rate
+
 
 class SpikeDataSaver:
 
@@ -262,6 +306,8 @@ class FileProcessor:
             spikes_per_channel, sampling_rate = self.brw_processor.process_serial(file_path, meta_data)
         # elif self.config.get("ExecutionMode") == "parallel":
         #     spikes_per_channel, sampling_rate = self.brw_processor.process_parallel(file_path, meta_data)
+        elif self.config.get("ExecutionMode") == "serialWindow":
+            spikes_per_channel, sampling_rate = self.brw_processor.process_serial_window(file_path, meta_data)
         else:
             raise NotImplementedError("Other execution mode not yet implemented")
 
