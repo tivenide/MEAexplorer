@@ -14,6 +14,8 @@ RUN python -m pip install -r requirements.txt
 WORKDIR /app
 COPY . /app
 
+ENV PYTHONPATH=/app/src
+
 RUN mkdir -p data
 # RUN touch myfile.brw
 
